@@ -1,10 +1,16 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
+    TcpListener server;
+    Thread serverThread;
+    
     [SerializeField]
     GameObject red, green;
 
@@ -29,9 +35,18 @@ public class GameManager : MonoBehaviour
         turnMessage.text = RED_MESSAGE;
         turnMessage.color = RED_COLOR;
         myBoard = new Board();
+        serverThread = new Thread(new ThreadStart(StartServer));
+        serverThread.IsBackground = true;
+        serverThread.Start();
     }
-
-
+    
+    void StartServer()
+    {
+        IPAddress localAddr = IPAddress.Parse("10.57.10.39");
+        server = new TcpListener(localAddr, 8080);
+        server.Start();
+    }
+    
     public void GameStart()
     {
         UnityEngine.SceneManagement.SceneManager.LoadScene(0);
@@ -93,5 +108,9 @@ public class GameManager : MonoBehaviour
 
         }
     }
-
+    void OnApplicationQuit()
+    {
+        server?.Stop();
+        serverThread?.Abort();
+    }
 }
