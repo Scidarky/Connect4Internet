@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using UnityEngine;
 using UnityEngine.UI;
@@ -27,6 +28,9 @@ public class GameManager : MonoBehaviour
 
     Board myBoard;
 
+    private Vector3 spawnPos;
+    private Vector3 targetPos;
+
 
     private void Awake()
     {
@@ -45,6 +49,16 @@ public class GameManager : MonoBehaviour
         IPAddress localAddr = IPAddress.Parse("10.57.10.39");
         server = new TcpListener(localAddr, 8080);
         server.Start();
+    }
+    
+    void SendMessageToServer()
+    {
+        TcpClient client = new TcpClient("10.57.10.36", 8080);
+        NetworkStream stream = client.GetStream();
+        byte[] data = Encoding.UTF8.GetBytes(mensagem);
+        stream.Write(data, 0, data.Length);
+        stream.Close();
+        client.Close();
     }
     
     public void GameStart()
@@ -80,8 +94,8 @@ public class GameManager : MonoBehaviour
                 if (hit.collider.gameObject.GetComponent<Column>().targetlocation.y > 1.5f) return;
 
                 //Spawn the GameObject
-                Vector3 spawnPos = hit.collider.gameObject.GetComponent<Column>().spawnLocation;
-                Vector3 targetPos = hit.collider.gameObject.GetComponent<Column>().targetlocation;
+                spawnPos = hit.collider.gameObject.GetComponent<Column>().spawnLocation;
+                targetPos = hit.collider.gameObject.GetComponent<Column>().targetlocation;
                 GameObject circle = Instantiate(isPlayer ? red : green);
                 circle.transform.position = spawnPos;
                 circle.GetComponent<Mover>().targetPostion = targetPos;
