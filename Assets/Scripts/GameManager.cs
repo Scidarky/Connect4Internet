@@ -55,7 +55,7 @@ public class GameManager : MonoBehaviour
     {
         TcpClient client = new TcpClient("10.57.10.36", 8080);
         NetworkStream stream = client.GetStream();
-        byte[] data = Encoding.UTF8.GetBytes(mensagem);
+        byte[] data = spawnPos;
         stream.Write(data, 0, data.Length);
         stream.Close();
         client.Close();

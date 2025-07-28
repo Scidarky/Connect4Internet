@@ -1,12 +1,12 @@
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading;
+using System.Collections;
+using System.Collections.Generic;
+using Unity.Collections;
+using Unity.Networking.Transport;
 using UnityEngine;
-public class TcpServerUnity : MonoBehaviour
+public class ServerBehaviour : MonoBehaviour
 {
-    TcpListener server;
-    Thread serverThread;
+    private NetworkDriver mDriver;
+    NativeList<NetworkConnection> mConnections;
     void Start()
     {
         serverThread = new Thread(new ThreadStart(StartServer));
