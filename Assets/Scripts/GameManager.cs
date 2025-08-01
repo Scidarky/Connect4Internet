@@ -9,9 +9,6 @@ using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
-    TcpListener server;
-    Thread serverThread;
-    
     [SerializeField]
     GameObject red, green;
 
@@ -28,10 +25,6 @@ public class GameManager : MonoBehaviour
 
     Board myBoard;
 
-    private Vector3 spawnPos;
-    private Vector3 targetPos;
-
-
     private void Awake()
     {
         isPlayer = true;
@@ -39,26 +32,6 @@ public class GameManager : MonoBehaviour
         turnMessage.text = RED_MESSAGE;
         turnMessage.color = RED_COLOR;
         myBoard = new Board();
-        serverThread = new Thread(new ThreadStart(StartServer));
-        serverThread.IsBackground = true;
-        serverThread.Start();
-    }
-    
-    void StartServer()
-    {
-        IPAddress localAddr = IPAddress.Parse("10.57.10.39");
-        server = new TcpListener(localAddr, 8080);
-        server.Start();
-    }
-    
-    void SendMessageToServer()
-    {
-        TcpClient client = new TcpClient("10.57.10.36", 8080);
-        NetworkStream stream = client.GetStream();
-        byte[] data = spawnPos;
-        stream.Write(data, 0, data.Length);
-        stream.Close();
-        client.Close();
     }
     
     public void GameStart()
@@ -94,8 +67,8 @@ public class GameManager : MonoBehaviour
                 if (hit.collider.gameObject.GetComponent<Column>().targetlocation.y > 1.5f) return;
 
                 //Spawn the GameObject
-                spawnPos = hit.collider.gameObject.GetComponent<Column>().spawnLocation;
-                targetPos = hit.collider.gameObject.GetComponent<Column>().targetlocation;
+                Vector3 spawnPos = hit.collider.gameObject.GetComponent<Column>().spawnLocation;
+                Vector3 targetPos = hit.collider.gameObject.GetComponent<Column>().targetlocation;
                 GameObject circle = Instantiate(isPlayer ? red : green);
                 circle.transform.position = spawnPos;
                 circle.GetComponent<Mover>().targetPostion = targetPos;
@@ -121,10 +94,5 @@ public class GameManager : MonoBehaviour
             }
 
         }
-    }
-    void OnApplicationQuit()
-    {
-        server?.Stop();
-        serverThread?.Abort();
     }
 }
