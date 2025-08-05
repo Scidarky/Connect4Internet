@@ -4,14 +4,13 @@ using UnityEngine.SceneManagement;
 
 public class MenuUI : MonoBehaviour
 {
-   
     public InputField inputIP;
 
     public void OnClickHost()
     {
         NetworkManagerP2P.Instance.StartHost(5000);
         Debug.Log("Host iniciado.");
-        SceneManager.LoadScene("Gameplay"); 
+        SceneManager.LoadScene("Gameplayyy");
     }
 
     public void OnClickJoin()
@@ -23,13 +22,17 @@ public class MenuUI : MonoBehaviour
             return;
         }
 
-        // Registra o que fazer depois que conectar com sucesso
-        NetworkManagerP2P.Instance.OnConnectedToHost = () =>
-        {
-            SceneManager.LoadScene("Gameplay");
-        };
+        // Adiciona o evento para trocar de cena quando conectar
+        NetworkManagerP2P.Instance.OnConnectedToHost += OnConnectedHandler;
 
         NetworkManagerP2P.Instance.ConnectToHost(ip, 5000);
         Debug.Log("Tentando conectar em " + ip);
+    }
+
+    void OnConnectedHandler()
+    {
+        Debug.Log("Conectado ao host, carregando cena.");
+        NetworkManagerP2P.Instance.OnConnectedToHost -= OnConnectedHandler; // Remove inscrição para evitar duplicação
+        SceneManager.LoadScene("Gameplayyy");
     }
 }

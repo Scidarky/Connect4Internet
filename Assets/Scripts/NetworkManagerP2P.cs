@@ -15,8 +15,14 @@ public class NetworkManagerP2P : MonoBehaviour
     Thread receiveThread;
     public bool isHost;
 
-    public Action<int> OnMoveReceived;     // Evento: quando movimento chegar
-    public Action OnConnectedToHost;       // Novo evento: quando conexão for feita
+    // Evento para quando uma jogada (coluna) for recebida
+    public event Action<int> OnMoveReceived;
+
+    // Flag para indicar carregamento na thread principal
+    private bool triggerLoadScene = false;
+
+    // Evento para notificar conexão estabelecida na thread principal
+    public event Action OnConnectedToHost;
 
     void Awake()
     {
@@ -26,6 +32,16 @@ public class NetworkManagerP2P : MonoBehaviour
             Destroy(gameObject);
 
         DontDestroyOnLoad(gameObject);
+    }
+
+    void Update()
+    {
+        // Chama o evento de conexão na thread principal
+        if (triggerLoadScene)
+        {
+            triggerLoadScene = false;
+            OnConnectedToHost?.Invoke();
+        }
     }
 
     public void StartHost(int port)
@@ -42,6 +58,7 @@ public class NetworkManagerP2P : MonoBehaviour
         isHost = false;
         client = new TcpClient();
         client.BeginConnect(ip, port, OnConnected, null);
+        Debug.Log($"Tentando conectar ao host {ip}:{port}");
     }
 
     void OnClientConnected(IAsyncResult result)
@@ -50,34 +67,51 @@ public class NetworkManagerP2P : MonoBehaviour
         stream = client.GetStream();
         StartReceiving();
         Debug.Log("Cliente conectado.");
+        
+        // Opcional: notificar host que cliente chegou
+        triggerLoadScene = true;
     }
 
     void OnConnected(IAsyncResult result)
     {
-        client.EndConnect(result);
-        stream = client.GetStream();
-        StartReceiving();
-        Debug.Log("Conectado ao host.");
+        try
+        {
+            client.EndConnect(result);
+            stream = client.GetStream();
+            StartReceiving();
+            Debug.Log("Conectado ao host.");
 
-        // Chama o evento registrado no MenuUI
-        OnConnectedToHost?.Invoke(); 
+            triggerLoadScene = true;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Erro ao conectar: " + e.Message);
+        }
     }
 
     void StartReceiving()
     {
         receiveThread = new Thread(() =>
         {
-            while (true)
+            try
             {
-                byte[] buffer = new byte[256];
-                int bytesRead = stream.Read(buffer, 0, buffer.Length);
-                if (bytesRead <= 0) continue;
-
-                string msg = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-                if (int.TryParse(msg, out int column))
+                while (true)
                 {
-                    OnMoveReceived?.Invoke(column);
+                    byte[] buffer = new byte[256];
+                    int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                    if (bytesRead <= 0) continue;
+
+                    string msg = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                    if (int.TryParse(msg, out int column))
+                    {
+                        Debug.Log($"Mensagem recebida: coluna {column}");
+                        OnMoveReceived?.Invoke(column);
+                    }
                 }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Erro na thread de recebimento: " + e.Message);
             }
         });
         receiveThread.IsBackground = true;
@@ -87,7 +121,16 @@ public class NetworkManagerP2P : MonoBehaviour
     public void SendMove(int column)
     {
         if (stream == null) return;
-        byte[] data = Encoding.ASCII.GetBytes(column.ToString());
-        stream.Write(data, 0, data.Length);
+
+        try
+        {
+            byte[] data = Encoding.ASCII.GetBytes(column.ToString());
+            stream.Write(data, 0, data.Length);
+            Debug.Log($"Jogada enviada: coluna {column}");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Erro ao enviar jogada: " + e.Message);
+        }
     }
 }
