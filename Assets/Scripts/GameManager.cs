@@ -28,17 +28,17 @@ public class GameManager : MonoBehaviour
     private void Awake()
     {
         hasGameFinished = false;
-        isPlayerTurn = true; // Host sempre começa (ajuste se quiser)
 
-        turnMessage.text = RED_MESSAGE;
-        turnMessage.color = RED_COLOR;
+    // Corrigido: só o host começa com o turno ativo
+    isPlayerTurn = NetworkManagerP2P.Instance.isHost;
 
-        myBoard = new Board();
+    turnMessage.text = isPlayerTurn ? RED_MESSAGE : GREEN_MESSAGE;
+    turnMessage.color = isPlayerTurn ? RED_COLOR : GREEN_COLOR;
 
-        columns = FindObjectsOfType<Column>();
+    myBoard = new Board();
+    columns = FindObjectsOfType<Column>();
 
-        // Inscreve para receber jogadas do outro jogador
-        NetworkManagerP2P.Instance.OnMoveReceived += OnMoveReceived;
+    NetworkManagerP2P.Instance.OnMoveReceived += OnMoveReceived;
     }
 
     private void OnDestroy()

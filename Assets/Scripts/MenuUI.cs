@@ -8,7 +8,7 @@ public class MenuUI : MonoBehaviour
 
     public void OnClickHost()
     {
-        NetworkManagerP2P.Instance.StartHost(5000);
+        NetworkManagerP2P.Instance.StartHost(5010);
         Debug.Log("Host iniciado.");
         SceneManager.LoadScene("Gameplayyy");
     }
@@ -25,7 +25,7 @@ public class MenuUI : MonoBehaviour
         // Adiciona o evento para trocar de cena quando conectar
         NetworkManagerP2P.Instance.OnConnectedToHost += OnConnectedHandler;
 
-        NetworkManagerP2P.Instance.ConnectToHost(ip, 5000);
+        NetworkManagerP2P.Instance.ConnectToHost(ip, 5010);
         Debug.Log("Tentando conectar em " + ip);
     }
 

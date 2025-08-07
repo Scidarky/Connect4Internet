@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Collections.Generic;
 
 public class NetworkManagerP2P : MonoBehaviour
 {
@@ -15,14 +16,14 @@ public class NetworkManagerP2P : MonoBehaviour
     Thread receiveThread;
     public bool isHost;
 
-    // Evento para quando uma jogada (coluna) for recebida
     public event Action<int> OnMoveReceived;
+    public event Action OnConnectedToHost;
 
-    // Flag para indicar carregamento na thread principal
     private bool triggerLoadScene = false;
 
-    // Evento para notificar conexão estabelecida na thread principal
-    public event Action OnConnectedToHost;
+    // 🔧 Fila para processar jogadas na thread principal
+    private Queue<int> pendingMoves = new Queue<int>();
+    private readonly object moveLock = new object();
 
     void Awake()
     {
@@ -36,29 +37,53 @@ public class NetworkManagerP2P : MonoBehaviour
 
     void Update()
     {
-        // Chama o evento de conexão na thread principal
+        // 🔁 Gatilho para carregar cena após conexão
         if (triggerLoadScene)
         {
             triggerLoadScene = false;
             OnConnectedToHost?.Invoke();
         }
+
+        // ✅ Processa jogadas na thread principal
+        lock (moveLock)
+        {
+            while (pendingMoves.Count > 0)
+            {
+                int move = pendingMoves.Dequeue();
+                OnMoveReceived?.Invoke(move);
+            }
+        }
     }
 
     public void StartHost(int port)
     {
-        isHost = true;
-        server = new TcpListener(IPAddress.Any, port);
-        server.Start();
-        server.BeginAcceptTcpClient(OnClientConnected, null);
-        Debug.Log("Aguardando conexão do cliente...");
+        try
+        {
+            isHost = true;
+            server = new TcpListener(IPAddress.Any, port);
+            server.Start();
+            server.BeginAcceptTcpClient(OnClientConnected, null);
+            Debug.Log("Aguardando conexão do cliente...");
+        }
+        catch (SocketException e)
+        {
+            Debug.LogError("Erro ao iniciar host: " + e.Message);
+        }
     }
 
     public void ConnectToHost(string ip, int port)
     {
-        isHost = false;
-        client = new TcpClient();
-        client.BeginConnect(ip, port, OnConnected, null);
-        Debug.Log($"Tentando conectar ao host {ip}:{port}");
+        try
+        {
+            isHost = false;
+            client = new TcpClient();
+            client.BeginConnect(ip, port, OnConnected, null);
+            Debug.Log($"Tentando conectar ao host {ip}:{port}");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Erro ao conectar: " + e.Message);
+        }
     }
 
     void OnClientConnected(IAsyncResult result)
@@ -67,8 +92,6 @@ public class NetworkManagerP2P : MonoBehaviour
         stream = client.GetStream();
         StartReceiving();
         Debug.Log("Cliente conectado.");
-        
-        // Opcional: notificar host que cliente chegou
         triggerLoadScene = true;
     }
 
@@ -80,7 +103,6 @@ public class NetworkManagerP2P : MonoBehaviour
             stream = client.GetStream();
             StartReceiving();
             Debug.Log("Conectado ao host.");
-
             triggerLoadScene = true;
         }
         catch (Exception e)
@@ -105,7 +127,12 @@ public class NetworkManagerP2P : MonoBehaviour
                     if (int.TryParse(msg, out int column))
                     {
                         Debug.Log($"Mensagem recebida: coluna {column}");
-                        OnMoveReceived?.Invoke(column);
+
+                        // ✅ Enfileira jogada para ser processada na thread principal
+                        lock (moveLock)
+                        {
+                            pendingMoves.Enqueue(column);
+                        }
                     }
                 }
             }
@@ -114,6 +141,7 @@ public class NetworkManagerP2P : MonoBehaviour
                 Debug.LogError("Erro na thread de recebimento: " + e.Message);
             }
         });
+
         receiveThread.IsBackground = true;
         receiveThread.Start();
     }
